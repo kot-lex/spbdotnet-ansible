@@ -1,0 +1,9 @@
+all:
+  hosts:
+    172.24.167.113:
+  vars:
+    ansible_connection: winrm
+    ansible_winrm_transport: credssp
+    ansible_winrm_server_cert_validation: ignore
+    ansible_user: administrator
+    ansible_password: 123qweASD
