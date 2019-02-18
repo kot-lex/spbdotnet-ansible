@@ -1,17 +1,19 @@
 - name: Install AWS CLI
   hosts: all 
   vars: 
-    download_dir: c:\downloads
+    aws_cli_download_dir: c:\downloads
+    aws_cli_msi_url: https://s3.amazonaws.com/aws-cli/AWSCLI32PY3.msi
   tasks:
     - name: Ensure target directory exists
       win_file:
-        path: "{{ download_dir }}"
+        path: "{{ aws_cli_download_dir }}"
         state: directory
     - name: Download installer
       win_get_url: 
-        url: https://s3.amazonaws.com/aws-cli/AWSCLI32PY3.msi
-        dest: "{{ download_dir }}\\awscli.msi"
+        url: "{{ aws_cli_msi_url }}"
+        dest: "{{ aws_cli_download_dir }}\\awscli.msi"
+        force: no
     - name: Install AWS CLI
       win_package:
-        path: C:\downloads\awscli.msi
+        path: "{{ aws_cli_download_dir }}\\awscli.msi"
         state: present
