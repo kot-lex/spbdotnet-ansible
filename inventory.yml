@@ -1,6 +1,7 @@
 all:
   hosts:
-    172.24.167.113:
+    spbdotnet-test-host:
+      ansible_host: 172.24.167.113
   vars:
     ansible_connection: winrm
     ansible_winrm_transport: credssp
