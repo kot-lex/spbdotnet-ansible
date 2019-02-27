@@ -1,0 +1,99 @@
+- name: Setup App
+  hosts: webservers
+  tasks:
+    - name: Install IIS
+      win_feature:
+        name:
+        - Web-Server
+        - Web-Common-Http
+        include_sub_features: True
+        include_management_tools: True
+        state: present 
+      register: win_feature  
+    - name: reboot if installing Web-Server feature requires it
+      win_reboot:
+      when: win_feature.reboot_required           
+
+- name: SQL Server
+  hosts: dbservers
+  tasks:
+    - name: Install MS SQL Server 2014
+      win_chocolatey:
+        name: mssqlserver2014express
+        state: present
+
+- name: Deploy IIS Web App
+  hosts: webservers
+  tasks:
+    - name: Ensure target directory exist
+      win_file:
+            path: C:\webapp
+            state: directory
+    - name: Copy artifacts to remote machine
+      win_copy:
+            src: files/WebApp.zip
+            dest: C:\webapp\WebApp.zip
+    - name: Unzip build artifacts
+      win_unzip:
+            src: C:\webapp\WebApp.zip
+            dest: C:\webapp
+    - name: Ensure that the WebApp application exists
+      win_iis_webapplication:
+          name: WebApp
+          physical_path: c:\webapp
+          site: Default Web Site
+          state: present
+
+- name: Deploy binaries
+  hosts: webservers
+  vars: 
+    myapp_artifacts: files/MyAppService.zip
+    myapp_workdir: C:\myapp 
+  tasks:
+    - name: Get arifacts checksum
+      stat: 
+        path: "{{ myapp_artifacts }}"
+      delegate_to: localhost
+      register: myapp_artifacts_stat
+  
+    - name: Get remote artifacts checksum
+      win_stat: 
+        path: "{{ myapp_workdir }}\\MyAppService.zip"
+      register: myapp_remote_artifacts_stat 
+
+    - name: Stop play if checksums match
+      meta: end_play
+      when: 
+       - myapp_artifacts_stat.stat.checksum is defined
+       - myapp_remote_artifacts_stat.stat.checksum is defined
+       - myapp_artifacts_stat.stat.checksum == myapp_remote_artifacts_stat.stat.checksum
+    
+    - name: Remove Service if exists
+      win_service: 
+            name: MyAppService
+            state: absent
+            path: "{{ myapp_workdir }}\\MyAppService.exe"
+
+    - name: Delete old files
+      win_file:
+            path: "{{ myapp_workdir }}\\"
+            state: absent  
+
+    - name: Copy artifacts to remote machine
+      win_copy:
+            src: "{{ myapp_artifacts }}"
+            dest: "{{ myapp_workdir }}\\"
+
+    - name: Unzip build artifacts
+      win_unzip:
+            src: "{{ myapp_workdir }}\\MyAppService.zip"
+            dest: "{{ myapp_workdir }}"
+
+    - name: Register and start the service
+      win_service:
+            name: ReporterService
+            start_mode: auto
+            state: started
+            path: "{{ myapp_workdir }}\\MyAppService.exe"
+
+
